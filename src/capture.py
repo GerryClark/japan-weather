@@ -117,13 +117,13 @@ def save_webp(png_segments: list[bytes], dest: Path) -> None:
 
 # ---------------------------------------------------------------- browser
 
-def new_context(browser, block_hosts: bool | None = None):
+def new_context(browser, block_hosts: bool | None = None, timezone: str = "UTC"):
     # AccuWeather (Akamai) refuses the "HeadlessChrome" user agent token, so
     # present the same browser version as regular Chrome. Nothing else is changed.
     probe = browser.new_page()
     ua = probe.evaluate("navigator.userAgent").replace("HeadlessChrome", "Chrome")
     probe.close()
-    ctx = browser.new_context(viewport=VIEWPORT, locale="en-US", timezone_id="Asia/Tokyo", user_agent=ua)
+    ctx = browser.new_context(viewport=VIEWPORT, locale="en-US", timezone_id=timezone, user_agent=ua)
 
     def route(r):
         host = urlparse(r.request.url).hostname or ""
@@ -413,7 +413,7 @@ def main() -> int:
             browser = pw.chromium.launch(channel="chromium")
         except PlaywrightError:
             browser = pw.chromium.launch()
-        ctx = new_context(browser)
+        ctx = new_context(browser, timezone=str(plan.tz))
         for lp in plan.locations:
             try:
                 locations.append(capture_location(ctx, lp, plan, prev))
@@ -427,7 +427,8 @@ def main() -> int:
                                             for p in lp.parts]})
         browser.close()
 
-    manifest = {"generated_at": plan.now.isoformat(), "timezone": str(plan.tz), "locations": locations}
+    manifest = {"generated_at": plan.now.isoformat(), "timezone": str(plan.tz), "title": plan.title,
+                "home_timezone": str(plan.home_tz) if plan.home_tz else None, "locations": locations}
     tmp = MANIFEST.with_suffix(".tmp")
     tmp.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
     tmp.replace(MANIFEST)

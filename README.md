@@ -5,7 +5,10 @@ published as one mobile-friendly page.
 
 **Page:** https://gerryclark.github.io/japan-weather/ (after the one-time setup below)
 
-Trip stops and dates live in `config/trip.yaml`. Everything else reads from there.
+**New here? Read [START.md](START.md)**: daily use, and how to set it up for another trip.
+
+Trip stops, dates, time zone and run time live in `config/trip.yaml`. Everything
+else reads from there.
 
 ## One-time setup (GitHub website)
 
@@ -55,7 +58,9 @@ capture time. The last 3 runs are kept under "Previous runs" at the bottom of th
 ```sh
 pip install -r requirements.txt
 python -m playwright install chromium
-python -m src.plan          # show what will be attempted
+python -m src.plan          # check config/trip.yaml, show what will be attempted
+python -m src.plan --cron   # UTC schedule line for run_at
+python -m src.find_location "Kyoto, Japan"
 python -m src.capture       # writes site/img/... and site/manifest.json
 python -m src.build_page    # writes site/index.html
 python -m pytest            # date math + selector tests against tests/fixtures/
@@ -69,6 +74,8 @@ python -m pytest            # date math + selector tests against tests/fixtures/
 | `src/accuweather.py` | URLs and **all** DOM selectors |
 | `src/capture.py` | Playwright: load pages, find rows, crop, save WebP, write manifest |
 | `src/build_page.py` + `templates/report.html.j2` | render `site/index.html` |
+| `src/find_location.py` | look up `accuweather_url` for a place |
+| `src/diagnose.py` | debug one page (boxes, screenshot) when captures break |
 | `tests/fixtures/` | saved AccuWeather HTML; refresh it and rerun tests if captures break |
 
 `site/` is generated. GitHub Actions keeps it between runs in the Actions cache (so

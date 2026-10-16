@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Japan Trip Weather</title>
+<title>{{ title }}</title>
 <style>
   :root {
     --bg: #f6f5f2; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70;
@@ -57,8 +57,8 @@
 <div class="wrap">
 <header>
   {{ archive_banner | safe }}
-  <h1>Japan Trip Weather</h1>
-  <p class="updated">Last updated: {{ updated_jst }}{% if updated_pacific %} · {{ updated_pacific }}{% endif %}</p>
+  <h1>{{ title }}</h1>
+  <p class="updated">Last updated: {{ updated_local }}{% if updated_home %} · {{ updated_home }}{% endif %}</p>
   <ul class="summary">
   {% for loc in locations %}
     <li><a href="#{{ loc.id }}">{{ loc.label }}</a>: {{ summarize(loc) }}</li>
@@ -122,7 +122,7 @@
   {% for h in history %}<a href="history/{{ h }}/index.html">{{ h }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
   {% endif %}
   {{ history_nav_end | safe }}
-  <p>Screenshots from AccuWeather. Times are Japan time (JST).</p>
+  <p>Screenshots from AccuWeather. Times are local trip time ({{ trip_tz_label }}).</p>
 </footer>
 </div>
 </body>

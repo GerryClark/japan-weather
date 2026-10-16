@@ -12,10 +12,8 @@ from zoneinfo import ZoneInfo
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from src.capture import ARCHIVE_BANNER, HISTORY, HISTORY_NAV_END, HISTORY_NAV_START, MANIFEST, SITE
-from src.plan import ROOT
+from src.plan import ROOT, load_config
 
-JST = ZoneInfo("Asia/Tokyo")
-PACIFIC = ZoneInfo("America/Los_Angeles")
 
 STATUS_LABEL = {
     "ok": "",
@@ -27,10 +25,12 @@ STATUS_LABEL = {
 }
 
 
-def fmt_ts(iso: str | None, tz: ZoneInfo = JST) -> str:
+def fmt_ts(iso: str | None, tz: ZoneInfo | None = None) -> str:
+    """24h time in `tz` (default: the time zone the timestamp was written in)."""
     if not iso:
         return ""
-    t = datetime.fromisoformat(iso).astimezone(tz)
+    t = datetime.fromisoformat(iso)
+    t = t.astimezone(tz) if tz else t
     return f"{t:%a %b} {t.day}, {t:%H:%M} {t.tzname()}"
 
 
@@ -72,17 +72,24 @@ def group_parts(loc: dict) -> list[dict]:
     return out
 
 
-def render(manifest: dict) -> str:
+def render(manifest: dict, config: dict | None = None) -> str:
+    config = config or {}
     env = Environment(loader=FileSystemLoader(ROOT / "templates"), autoescape=select_autoescape(["html", "j2"]))
     env.filters["ts"] = fmt_ts
     env.filters["bust"] = cache_bust
     history = sorted((p.name for p in HISTORY.iterdir() if p.is_dir()), reverse=True) if HISTORY.exists() else []
     generated = manifest.get("generated_at")
+    trip_tz = ZoneInfo(manifest.get("timezone") or config.get("timezone") or "UTC")
+    home_name = config.get("home_timezone") or manifest.get("home_timezone")
+    home_tz = ZoneInfo(home_name) if home_name else None
+    trip_tz_label = datetime.now(trip_tz).tzname()
     return env.get_template("report.html.j2").render(
         manifest=manifest,
         locations=manifest.get("locations", []),
-        updated_jst=fmt_ts(generated) if generated else "never",
-        updated_pacific=fmt_ts_12h(generated, PACIFIC) if generated else "",
+        title=config.get("title") or manifest.get("title") or "Trip Weather",
+        updated_local=fmt_ts(generated, trip_tz) if generated else "never",
+        updated_home=fmt_ts_12h(generated, home_tz) if generated and home_tz else "",
+        trip_tz_label=trip_tz_label,
         summarize=summarize,
         group_parts=group_parts,
         status_label=STATUS_LABEL,
@@ -101,7 +108,11 @@ def main() -> int:
         manifest = {}
     SITE.mkdir(exist_ok=True)
     out = SITE / "index.html"
-    out.write_text(render(manifest), encoding="utf-8")
+    try:
+        config = load_config()
+    except OSError:
+        config = {}
+    out.write_text(render(manifest, config), encoding="utf-8")
     print(f"Wrote {out.relative_to(ROOT)}")
     return 0
 

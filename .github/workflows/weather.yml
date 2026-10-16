@@ -4,7 +4,9 @@ on:
   # Manual run: GitHub website or mobile app → Actions → "Weather report" → Run workflow.
   workflow_dispatch:
 
-  # Once a day: 20:30 UTC = 05:30 JST. Only runs from the default branch (main).
+  # Once a day at `run_at` in config/trip.yaml (05:30 Asia/Tokyo = 20:30 UTC).
+  # Cron is UTC: after changing run_at/timezone, paste `python -m src.plan --cron`.
+  # Only runs from the default branch (main).
   schedule:
     - cron: "30 20 * * *"
 
@@ -37,6 +39,9 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Check trip config
+        run: python -m src.plan
+
       - name: Stop after the trip
         id: gate
         run: python -m src.plan --check-active
@@ -44,6 +49,12 @@ jobs:
       - name: Install Chromium
         if: steps.gate.outputs.active == 'true'
         run: python -m playwright install --with-deps chromium
+
+      # Branch previews only: unit + selector tests (scheduled runs skip them so a
+      # test problem never blocks the daily page).
+      - name: Tests (preview)
+        if: steps.gate.outputs.active == 'true' && github.event_name == 'push'
+        run: python -m pytest -q
 
       # Last run's site/ (images + manifest) so failed captures can reuse the last good image.
       - name: Restore last site
@@ -61,8 +72,8 @@ jobs:
         if: steps.gate.outputs.active == 'true' && github.event_name == 'push'
         continue-on-error: true
         run: |
-          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/daily-weather-forecast/2409626" --b64
-          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/hourly-weather-forecast/2409626?day=2" --b64
+          python -m src.diagnose --first daily --b64
+          python -m src.diagnose --first hourly --b64
 
       - name: Capture screenshots
         if: steps.gate.outputs.active == 'true'
