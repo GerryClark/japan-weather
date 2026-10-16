@@ -21,34 +21,34 @@ locations:
   - id: tokyo-ueno
     label: "Tokyo – Ueno"
     search: "Taito, Tokyo, Japan"
-    accuweather_url: ""
+    accuweather_url: "https://www.accuweather.com/en/jp/ueno/2409626/weather-forecast/2409626"
     start: 2026-10-21
     end:   2026-10-25
 
   - id: hakone
     label: "Hakone-Yumoto"
     search: "Hakone, Kanagawa, Japan"
-    accuweather_url: ""
+    accuweather_url: "https://www.accuweather.com/en/jp/yumoto/1505043/weather-forecast/1505043"
     start: 2026-10-25
     end:   2026-10-27
 
   - id: kanazawa
     label: "Kanazawa"
     search: "Kanazawa, Ishikawa, Japan"
-    accuweather_url: ""
+    accuweather_url: "https://www.accuweather.com/en/jp/hirosaka/2378663/weather-forecast/2378663"
     start: 2026-10-27
     end:   2026-10-30
 
   - id: osaka-namba
     label: "Osaka – Namba"
     search: "Naniwa, Osaka, Japan"
-    accuweather_url: ""
+    accuweather_url: "https://www.accuweather.com/en/jp/naniwa-ku/219631/weather-forecast/219631"
     start: 2026-10-30
     end:   2026-11-03
 
   - id: tokyo-ginza
     label: "Tokyo – Ginza"
     search: "Chuo, Tokyo, Japan"
-    accuweather_url: ""
+    accuweather_url: "https://www.accuweather.com/en/jp/ginza/1511475/weather-forecast/1511475"
     start: 2026-11-03
     end:   2026-11-05

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+# Generated output. GitHub Actions keeps it in the Actions cache and publishes it
+# to Pages; the Claude Code fallback commits it with `git add -f site`.
+site/
