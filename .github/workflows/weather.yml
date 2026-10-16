@@ -64,6 +64,7 @@ jobs:
         continue-on-error: true
         run: |
           python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/daily-weather-forecast/2409626" --b64
+          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/daily-weather-forecast/2409626" --b64 --no-block
           python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/hourly-weather-forecast/2409626?day=2" --b64
 
       - name: Capture screenshots

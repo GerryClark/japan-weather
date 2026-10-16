@@ -34,13 +34,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("--b64", action="store_true")
+    ap.add_argument("--no-block", action="store_true", help="don't block ad/consent hosts")
     args = ap.parse_args()
     with sync_playwright() as pw:
         try:
             browser = pw.chromium.launch(channel="chromium")
         except Exception:
             browser = pw.chromium.launch()
-        page = new_context(browser).new_page()
+        page = new_context(browser, block_hosts=not args.no_block).new_page()
+        print('host blocking:', 'off' if args.no_block else 'on')
         open_page(page, args.url)
         print("url:", page.url, "| title:", page.title())
         sel = aw.HOUR_ROW if aw.is_hourly_url(page.url) else aw.DAILY_CARD
@@ -55,7 +57,11 @@ def main() -> int:
         if args.b64:
             print("VIEWPORT_B64", thumb_b64(page.screenshot(type="png")))
             if els:
-                print("CROP_B64", thumb_b64(crop_png(page, els[:5])))
+                try:
+                    print("CROP_B64", thumb_b64(crop_png(page, els[:5])))
+                except Exception as e:
+                    print("crop failed:", e)
+                    print("VIEWPORT_AFTER_B64", thumb_b64(page.screenshot(type="png")))
         browser.close()
     return 0
 

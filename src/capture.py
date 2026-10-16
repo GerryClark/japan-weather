@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import shutil
 import sys
 import time
@@ -30,6 +31,9 @@ HISTORY_KEEP = 3
 MAX_IMAGE_BYTES = 300_000
 MAX_IMAGE_WIDTH = 1000
 BLANK_STDDEV = 4  # grayscale std-dev below this = a blank/uniform image
+DARK_LEVEL = 110  # luminance below this counts as text/icon ink
+BLANK_DARK_FRACTION = 0.0005
+CROP_ATTEMPTS = 6
 VIEWPORT = {"width": 1280, "height": 2000}
 NAV_RETRIES = 3
 
@@ -113,7 +117,7 @@ def save_webp(png_segments: list[bytes], dest: Path) -> None:
 
 # ---------------------------------------------------------------- browser
 
-def new_context(browser):
+def new_context(browser, block_hosts: bool | None = None):
     # AccuWeather (Akamai) refuses the "HeadlessChrome" user agent token, so
     # present the same browser version as regular Chrome. Nothing else is changed.
     probe = browser.new_page()
@@ -127,7 +131,10 @@ def new_context(browser):
             return r.abort()
         return r.continue_()
 
-    ctx.route("**/*", route)
+    if block_hosts is None:
+        block_hosts = os.environ.get("AW_BLOCK_HOSTS", "1") != "0"
+    if block_hosts:
+        ctx.route("**/*", route)
     return ctx
 
 
@@ -173,18 +180,40 @@ def prepare_page(page) -> None:
     page.wait_for_timeout(500)
 
 
+def is_blank(png: bytes) -> bool:
+    """True for a crop with no dark pixels: empty, or AccuWeather's grey loading skeleton."""
+    gray = Image.open(io.BytesIO(png)).convert("L")
+    gray.thumbnail((400, 4000))
+    hist = gray.histogram()
+    dark = sum(hist[:DARK_LEVEL])
+    return dark < BLANK_DARK_FRACTION * gray.width * gray.height
+
+
 def crop_png(page, elements) -> bytes:
-    """Screenshot the union bounding box of `elements` (page coordinates)."""
-    boxes = [el.evaluate("""e => { const r = e.getBoundingClientRect();
-        return [r.left + scrollX, r.top + scrollY, r.right + scrollX, r.bottom + scrollY]; }""")
-        for el in elements]
-    x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
-    x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
-    if x1 - x0 < 50 or y1 - y0 < 20:
-        raise CaptureError("page layout did not render (stylesheets blocked?)")
-    pad = 4
-    clip = {"x": max(0, x0 - pad), "y": max(0, y0 - pad), "width": x1 - x0 + 2 * pad, "height": y1 - y0 + 2 * pad}
-    return page.screenshot(clip=clip, full_page=True, type="png", animations="disabled")
+    """Screenshot the union bounding box of `elements` (page coordinates).
+
+    AccuWeather paints grey placeholders until its scripts hydrate each block
+    (often when it scrolls into view), so scroll through the elements and retry
+    until the crop has real content.
+    """
+    for attempt in range(CROP_ATTEMPTS):
+        for el in (elements[0], elements[-1], elements[0]):
+            el.scroll_into_view_if_needed(timeout=5000)
+            page.wait_for_timeout(300)
+        boxes = [el.evaluate("""e => { const r = e.getBoundingClientRect();
+            return [r.left + scrollX, r.top + scrollY, r.right + scrollX, r.bottom + scrollY]; }""")
+            for el in elements]
+        x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+        x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+        if x1 - x0 < 50 or y1 - y0 < 20:
+            raise CaptureError("page layout did not render (stylesheets blocked?)")
+        pad = 4
+        clip = {"x": max(0, x0 - pad), "y": max(0, y0 - pad), "width": x1 - x0 + 2 * pad, "height": y1 - y0 + 2 * pad}
+        png = page.screenshot(clip=clip, full_page=True, type="png", animations="disabled")
+        if not is_blank(png):
+            return png
+        page.wait_for_timeout(1500)
+    raise CaptureError("forecast content never painted (only loading placeholders)")
 
 
 # ---------------------------------------------------------------- manifest helpers

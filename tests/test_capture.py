@@ -46,3 +46,18 @@ def test_save_webp_rejects_blank_image(tmp_path):
     with pytest.raises(capture.CaptureError):
         capture.save_webp([buf.getvalue()], tmp_path / "blank.webp")
     assert not (tmp_path / "blank.webp").exists()
+
+
+def test_is_blank_detects_skeleton_but_not_text():
+    import io
+    from PIL import Image, ImageDraw
+    skel = Image.new("RGB", (600, 200), (226, 230, 236))
+    ImageDraw.Draw(skel).rectangle((20, 20, 400, 60), fill=(214, 219, 226))
+    text = skel.copy()
+    d = ImageDraw.Draw(text)
+    for y in (80, 110, 140):
+        d.text((30, y), "SAT 10/17  78° / 58°  Mostly sunny", fill=(30, 30, 30))
+    def png(im):
+        b = io.BytesIO(); im.save(b, "PNG"); return b.getvalue()
+    assert capture.is_blank(png(skel))
+    assert not capture.is_blank(png(text))
