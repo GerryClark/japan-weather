@@ -3,20 +3,29 @@
 # hotel phone numbers or other itinerary details: this repo and its published
 # page may be visible to others.
 
-timezone: Asia/Tokyo
+title: "Japan Trip Weather"         # page heading
+
+timezone: Asia/Tokyo                # the trip's local time zone (IANA name)
+home_timezone: America/Los_Angeles  # second clock in "Last updated" (optional)
+
+# Daily run time, in the trip's local time. GitHub schedules are in UTC: after
+# changing this or `timezone`, run `python -m src.plan --cron` and copy the
+# line it prints into .github/workflows/weather.yml.
+run_at: "05:30"
 
 # Hourly forecast is split into two images per date.
 # Night of a date = 18:00 that date through 05:59 the next morning.
 day_hours:   { start: "06:00", end: "17:59" }
 night_hours: { start: "18:00", end: "05:59" }   # wraps past midnight
 
-# Stop the scheduled run automatically after this date (JST).
+# Stop the scheduled run automatically after this date (trip time zone).
+# Optional: defaults to the last location's end date.
 end_date: 2026-11-05
 
 # Travel days appear under BOTH locations (departure and arrival).
-# accuweather_url: fill in once with the verified AccuWeather city page
-# (e.g. https://www.accuweather.com/en/jp/<city-slug>/<location-key>/weather-forecast/<location-key>).
-# Look each one up; do not guess location keys.
+# accuweather_url: the verified AccuWeather city page, e.g.
+# https://www.accuweather.com/en/jp/<city-slug>/<location-key>/weather-forecast/<location-key>
+# Find it with: python -m src.find_location "Kyoto, Japan"   (never guess keys)
 locations:
   - id: tokyo-ueno
     label: "Tokyo – Ueno"

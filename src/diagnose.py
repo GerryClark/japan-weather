@@ -3,6 +3,7 @@ what the browser sees (element boxes, visibility, overlay candidates).
 
 Usage:
     python -m src.diagnose <url> [--b64]
+    python -m src.diagnose --first daily|hourly [--b64]   # first stop in trip.yaml
 
 --b64 prints a small JPEG of the viewport and of the crop as base64 so it can
 be inspected from a CI log when artifacts can't be downloaded.
@@ -19,6 +20,7 @@ from playwright.sync_api import sync_playwright
 
 from src import accuweather as aw
 from src.capture import crop_png, new_context, open_page
+from src.plan import load_config
 
 
 def thumb_b64(png: bytes, width: int = 480) -> str:
@@ -32,10 +34,17 @@ def thumb_b64(png: bytes, width: int = 480) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("url")
+    ap.add_argument("url", nargs="?")
+    ap.add_argument("--first", choices=["daily", "hourly"],
+                    help="use the first location in config/trip.yaml instead of a URL")
     ap.add_argument("--b64", action="store_true")
     ap.add_argument("--no-block", action="store_true", help="don't block ad/consent hosts")
     args = ap.parse_args()
+    if args.first:
+        urls = aw.parse_location_url(load_config()["locations"][0]["accuweather_url"])
+        args.url = urls.daily if args.first == "daily" else urls.hourly(2)
+    if not args.url:
+        ap.error("give a URL or --first")
     with sync_playwright() as pw:
         try:
             browser = pw.chromium.launch(channel="chromium")
