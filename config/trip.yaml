@@ -1,0 +1,54 @@
+# Japan trip, Oct 21 – Nov 5, 2026 (2 adults)
+# Only cities and dates live here. Do NOT add booking numbers, seat numbers,
+# hotel phone numbers or other itinerary details: this repo and its published
+# page may be visible to others.
+
+timezone: Asia/Tokyo
+
+# Hourly forecast is split into two images per date.
+# Night of a date = 18:00 that date through 05:59 the next morning.
+day_hours:   { start: "06:00", end: "17:59" }
+night_hours: { start: "18:00", end: "05:59" }   # wraps past midnight
+
+# Stop the scheduled run automatically after this date (JST).
+end_date: 2026-11-05
+
+# Travel days appear under BOTH locations (departure and arrival).
+# accuweather_url: fill in once with the verified AccuWeather city page
+# (e.g. https://www.accuweather.com/en/jp/<city-slug>/<location-key>/weather-forecast/<location-key>).
+# Look each one up; do not guess location keys.
+locations:
+  - id: tokyo-ueno
+    label: "Tokyo – Ueno"
+    search: "Taito, Tokyo, Japan"
+    accuweather_url: ""
+    start: 2026-10-21
+    end:   2026-10-25
+
+  - id: hakone
+    label: "Hakone-Yumoto"
+    search: "Hakone, Kanagawa, Japan"
+    accuweather_url: ""
+    start: 2026-10-25
+    end:   2026-10-27
+
+  - id: kanazawa
+    label: "Kanazawa"
+    search: "Kanazawa, Ishikawa, Japan"
+    accuweather_url: ""
+    start: 2026-10-27
+    end:   2026-10-30
+
+  - id: osaka-namba
+    label: "Osaka – Namba"
+    search: "Naniwa, Osaka, Japan"
+    accuweather_url: ""
+    start: 2026-10-30
+    end:   2026-11-03
+
+  - id: tokyo-ginza
+    label: "Tokyo – Ginza"
+    search: "Chuo, Tokyo, Japan"
+    accuweather_url: ""
+    start: 2026-11-03
+    end:   2026-11-05
