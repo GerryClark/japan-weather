@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PIL import Image
+from PIL import Image, ImageStat
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
@@ -29,6 +29,7 @@ HISTORY = SITE / "history"
 HISTORY_KEEP = 3
 MAX_IMAGE_BYTES = 300_000
 MAX_IMAGE_WIDTH = 1000
+BLANK_STDDEV = 4  # grayscale std-dev below this = a blank/uniform image
 VIEWPORT = {"width": 1280, "height": 2000}
 NAV_RETRIES = 3
 
@@ -86,6 +87,8 @@ def save_webp(png_segments: list[bytes], dest: Path) -> None:
     for i in imgs:
         canvas.paste(i, (0, y))
         y += i.height
+    if ImageStat.Stat(canvas.convert("L")).stddev[0] < BLANK_STDDEV:
+        raise CaptureError("captured image is blank (page content not painted)")
     if canvas.width > MAX_IMAGE_WIDTH:
         r = MAX_IMAGE_WIDTH / canvas.width
         canvas = canvas.resize((MAX_IMAGE_WIDTH, round(canvas.height * r)), Image.LANCZOS)
@@ -330,7 +333,7 @@ def capture_hourly(page, lp: LocationPlan, plan: Plan, urls: aw.LocationUrls, pr
         rel = f"img/{lp.id}/{p.image_name}"
         try:
             save_webp(st["segments"], SITE / rel)
-        except OSError as e:
+        except (CaptureError, OSError) as e:
             results.append(fallback(prev_entry, base, str(e)))
             continue
         results.append({**base, "status": "partial" if missing else "ok", "image": rel,

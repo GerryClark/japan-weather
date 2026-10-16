@@ -58,6 +58,14 @@ jobs:
             site-${{ github.ref_name }}-
             site-main-
 
+      # Branch previews only: log what the browser sees on one daily + one hourly page.
+      - name: Page diagnostics (preview)
+        if: steps.gate.outputs.active == 'true' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/daily-weather-forecast/2409626" --b64
+          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/hourly-weather-forecast/2409626?day=2" --b64
+
       - name: Capture screenshots
         if: steps.gate.outputs.active == 'true'
         run: python -m src.capture
