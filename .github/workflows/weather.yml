@@ -1,0 +1,118 @@
+name: Weather report
+
+on:
+  # Manual run: GitHub website or mobile app → Actions → "Weather report" → Run workflow.
+  workflow_dispatch:
+
+  # Once a day: 20:30 UTC = 05:30 JST. Only runs from the default branch (main).
+  schedule:
+    - cron: "30 20 * * *"
+
+  # Preview on development branches: capture + build, upload as a build
+  # artifact, never deploy. Lets changes be checked on GitHub's runners.
+  push:
+    branches: ["claude/**"]
+    paths: ["src/**", "templates/**", "config/**", "requirements.txt", ".github/workflows/weather.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weather-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      active: ${{ steps.gate.outputs.active }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Stop after the trip
+        id: gate
+        run: python -m src.plan --check-active
+
+      - name: Install Chromium
+        if: steps.gate.outputs.active == 'true'
+        run: python -m playwright install --with-deps chromium
+
+      # Last run's site/ (images + manifest) so failed captures can reuse the last good image.
+      - name: Restore last site
+        if: steps.gate.outputs.active == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: site
+          key: site-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            site-${{ github.ref_name }}-
+            site-main-
+
+      # Branch previews only: log what the browser sees on one daily + one hourly page.
+      - name: Page diagnostics (preview)
+        if: steps.gate.outputs.active == 'true' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/daily-weather-forecast/2409626" --b64
+          python -m src.diagnose "https://www.accuweather.com/en/jp/ueno/2409626/hourly-weather-forecast/2409626?day=2" --b64
+
+      - name: Capture screenshots
+        if: steps.gate.outputs.active == 'true'
+        run: python -m src.capture
+
+      - name: Build page
+        if: steps.gate.outputs.active == 'true'
+        run: python -m src.build_page
+
+      - name: Run summary
+        if: steps.gate.outputs.active == 'true'
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.load(open("site/manifest.json"))
+          print(f"### Weather report — {m['generated_at']}")
+          for loc in m["locations"]:
+              st = [loc["overview"]["status"]] + [p["status"] for p in loc["parts"]]
+              counts = {s: st.count(s) for s in sorted(set(st))}
+              print(f"- **{loc['label']}**: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+              for item in [loc["overview"]] + loc["parts"]:
+                  if item["status"] in ("error", "stale"):
+                      print(f"  - {item.get('key', 'overview')}: {item.get('note', '')}")
+          EOF
+          cat "$GITHUB_STEP_SUMMARY"
+          ls -la site/img/* 2>/dev/null || true
+
+      - name: Save site
+        if: steps.gate.outputs.active == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: site
+          key: site-${{ github.ref_name }}-${{ github.run_id }}
+
+      - name: Upload Pages artifact
+        if: steps.gate.outputs.active == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.active == 'true' && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Japan Trip Weather</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70;
+    --border: #e2e0db; --accent: #b4332d; --ok: #2f7d4f; --warn: #a86b00; --bad: #b4332d;
+    --chip: #efede8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --surface: #1e1e21; --text: #ececee; --muted: #a0a0a8;
+      --border: #303034; --accent: #ef6a62; --ok: #6cc391; --warn: #e2b04a; --bad: #ef6a62;
+      --chip: #2a2a2e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 20px 0 8px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .updated { color: var(--muted); font-size: .9rem; margin: 0; }
+  .summary { list-style: none; padding: 0; margin: 12px 0 0; font-size: .9rem; }
+  .summary li { padding: 2px 0; }
+  .summary a { color: var(--text); font-weight: 600; text-decoration: none; }
+  nav.jump { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--border);
+             display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 8px; scrollbar-width: none; }
+  nav.jump a { flex: none; background: var(--chip); color: var(--text); text-decoration: none;
+               padding: 6px 12px; border-radius: 999px; font-size: .9rem; white-space: nowrap; }
+  section.loc { scroll-margin-top: 56px; margin-top: 24px; }
+  h2 { font-size: 1.25rem; margin: 0 0 2px; }
+  .dates { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+          padding: 12px; margin: 0 0 12px; }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  h4 { font-size: .95rem; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+  .window { color: var(--muted); font-weight: 400; }
+  img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; }
+  .note { margin: 8px 0 0; font-size: .9rem; color: var(--muted); }
+  .badge { font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--chip); }
+  .badge.partial, .badge.stale, .badge.unavailable { color: var(--warn); }
+  .badge.error { color: var(--bad); }
+  .badge.past { color: var(--muted); }
+  .src { font-size: .85rem; }
+  .src a, footer a { color: var(--accent); }
+  .archive { background: var(--chip); padding: 8px 12px; border-radius: 8px; }
+  footer { color: var(--muted); font-size: .85rem; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  {{ archive_banner | safe }}
+  <h1>Japan Trip Weather</h1>
+  <p class="updated">Last updated: {{ updated_jst }}{% if updated_pacific %} · {{ updated_pacific }}{% endif %}</p>
+  <ul class="summary">
+  {% for loc in locations %}
+    <li><a href="#{{ loc.id }}">{{ loc.label }}</a>: {{ summarize(loc) }}</li>
+  {% endfor %}
+  </ul>
+</header>
+
+<nav class="jump" aria-label="Jump to location">
+  {% for loc in locations %}<a href="#{{ loc.id }}">{{ loc.label }}</a>{% endfor %}
+</nav>
+
+{% if not locations %}
+<p>No forecast has been captured yet.</p>
+{% endif %}
+
+{% macro shot(entry, alt) -%}
+  {% if entry.image %}
+    <img src="{{ entry | bust }}" alt="{{ alt }}" loading="lazy" decoding="async">
+  {% endif %}
+  {% if entry.status == 'stale' %}
+    <p class="note">Stale, captured {{ entry.captured_at | ts }}. {{ entry.note }}</p>
+  {% elif entry.note %}
+    <p class="note">{{ entry.note }}</p>
+  {% endif %}
+{%- endmacro %}
+
+{% for loc in locations %}
+<section class="loc" id="{{ loc.id }}">
+  <h2>{{ loc.label }}</h2>
+  {% set first = loc.dates[0] %}{% set last = loc.dates[-1] %}
+  <p class="dates">{{ loc.dates | length }} days · {{ first }} → {{ last }}
+    {% if loc.url %}· <span class="src"><a href="{{ loc.url }}" rel="noopener">AccuWeather</a></span>{% endif %}</p>
+
+  <div class="card">
+    <h4>10-day overview
+      {% set st = loc.overview.status %}
+      {% if status_label[st] %}<span class="badge {{ st }}">{{ status_label[st] }}</span>{% endif %}
+    </h4>
+    {{ shot(loc.overview, loc.label ~ " daily forecast") }}
+  </div>
+
+  {% for day in group_parts(loc) %}
+  <h3>{{ day.label }}</h3>
+  {% for p in day.parts %}
+  <div class="card">
+    <h4>{{ "Day" if p.kind == "day" else "Night" }}
+      <span class="window">{{ p.window_short or p.window }}</span>
+      {% if status_label[p.status] %}<span class="badge {{ p.status }}">{{ status_label[p.status] }}</span>{% endif %}
+    </h4>
+    {{ shot(p, loc.label ~ " " ~ day.label ~ " " ~ p.kind ~ " hourly forecast") }}
+  </div>
+  {% endfor %}
+  {% endfor %}
+</section>
+{% endfor %}
+
+<footer>
+  {{ history_nav_start | safe }}
+  {% if history %}
+  Previous runs:
+  {% for h in history %}<a href="history/{{ h }}/index.html">{{ h }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+  {% endif %}
+  {{ history_nav_end | safe }}
+  <p>Screenshots from AccuWeather. Times are Japan time (JST).</p>
+</footer>
+</div>
+</body>
+</html>
