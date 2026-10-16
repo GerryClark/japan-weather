@@ -12,8 +12,7 @@ Trip stops and dates live in `config/trip.yaml`. Everything else reads from ther
 1. Merge this branch into `main`.
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
 3. Run the workflow once by hand (see below) and check the page.
-4. To turn on the schedule, uncomment the `schedule:` block in
-   `.github/workflows/weather.yml` (or ask Claude to do it).
+4. The daily schedule starts by itself once the workflow is on `main`.
 
 GitHub Pages is free only for public repos. The repo and page hold only city
 names, dates and weather.
@@ -26,12 +25,11 @@ A run takes a few minutes; then reload the page.
 
 ## Schedule
 
-Once enabled:
+Once a day, in the morning (after the branch is merged into `main`):
 
-| Run | JST | US Pacific, until Oct 31 (PDT) | US Pacific, from Nov 1 (PST) |
-|---|---|---|---|
-| Morning | 05:30 | 1:30 PM, the previous day | 12:30 PM, the previous day |
-| Evening | 17:30 | 1:30 AM, the same day | 12:30 AM, the same day |
+| JST | US Pacific, until Oct 31 (PDT) | US Pacific, from Nov 1 (PST) |
+|---|---|---|
+| 05:30 | 1:30 PM, the previous day | 12:30 PM, the previous day |
 
 GitHub can start scheduled runs 5–30 minutes late. Runs after `end_date` (Nov 5 JST)
 exit right away without doing anything.

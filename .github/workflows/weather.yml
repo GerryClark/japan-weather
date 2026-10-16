@@ -4,11 +4,9 @@ on:
   # Manual run: GitHub website or mobile app → Actions → "Weather report" → Run workflow.
   workflow_dispatch:
 
-  # Scheduled runs. Off until the owner has checked the first published page;
-  # uncomment to enable. 20:30 UTC = 05:30 JST, 08:30 UTC = 17:30 JST.
-  # schedule:
-  #   - cron: "30 20 * * *"
-  #   - cron: "30 8 * * *"
+  # Once a day: 20:30 UTC = 05:30 JST. Only runs from the default branch (main).
+  schedule:
+    - cron: "30 20 * * *"
 
   # Preview on development branches: capture + build, upload as a build
   # artifact, never deploy. Lets changes be checked on GitHub's runners.
